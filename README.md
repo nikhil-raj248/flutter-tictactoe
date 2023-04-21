@@ -3,8 +3,10 @@
 ![WhatsApp Image 2023-04-22 at 2 43 34 AM (1)](https://user-images.githubusercontent.com/71483319/233735767-19026fed-ca6a-4c75-91d7-e841f03fc388.jpeg)
 ![WhatsApp Image 2023-04-22 at 2 43 34 AM](https://user-images.githubusercontent.com/71483319/233735784-6957f3fd-6151-40e0-9339-3a326cf7e6f0.jpeg)
 
--> player vs player
+-> player vs player		
+
 -> player vs mobile with either mobile or player first
+
 -> used Minimax Algorithm in Game Theory for finding bestMove
 
 A new Flutter project.
