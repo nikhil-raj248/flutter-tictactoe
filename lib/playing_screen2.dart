@@ -1,34 +1,63 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
-class PlayingScreen extends StatefulWidget {
-  const PlayingScreen({Key? key}) : super(key: key);
+class PlayingScreen2 extends StatefulWidget {
+  const PlayingScreen2({Key? key,
+    required this.isMobileFirst}) : super(key: key);
+
+  final bool? isMobileFirst;
 
   @override
-  State<PlayingScreen> createState() => _PlayingScreenState();
+  State<PlayingScreen2> createState() => _PlayingScreen2State();
 }
 
-class _PlayingScreenState extends State<PlayingScreen> {
+class _PlayingScreen2State extends State<PlayingScreen2> {
 
   int currPlayer = 1;
   bool gameWon = false;
+  bool gameDraw = false;
   List<List<int>> grid=[
     [0,0,0],
     [0,0,0],
     [0,0,0],
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    if(widget.isMobileFirst!){
+      Future<List<int>> bestMove= findBestMove();
+      bestMove.then((value){
+        currPlayer=2;
+        onCellClicked(value[0],value[1]);
+      });
+    }
+  }
+
   void onCellClicked(int row,int col){
-    setState(() {
+    setState(()  {
       if(grid[row][col]==0 && !gameWon){
         grid[row][col]=currPlayer;
         if(checkColWin()||checkRowWin()||checkDiagnolWin()){
           gameWon = true;
         }
-        else{
-          if(currPlayer==1)currPlayer=2;
-          else currPlayer=1;
+        else if(isMovesLeft()){
+          if(currPlayer==1){
+            //call best possible step
+            currPlayer=2;
+            Future<List<int>> bestMove= findBestMove();
+            bestMove.then((value){
+              onCellClicked(value[0],value[1]);
+            });
+          }
+          else {
+            currPlayer=1;
+          }
         }
-        print(gameWon);
+        else{
+          gameDraw=true;
+        }
       }
     });
   }
@@ -89,12 +118,98 @@ class _PlayingScreenState extends State<PlayingScreen> {
     setState(() {
       gameWon=false;
       currPlayer=1;
+      gameDraw=false;
       for(int i=0;i<3;i++){
         for(int j=0;j<3;j++){
           grid[i][j]=0;
         }
       }
     });
+  }
+
+  bool isMovesLeft(){
+    for(int i=0;i<3;i++){
+      for(int j=0;j<3;j++){
+        if(grid[i][j]==0)return true;
+      }
+    }
+    return false;
+  }
+
+  int evaluate(){
+    for(int i=0;i<3;i++){
+      if(grid[i][0]==grid[i][1] && grid[i][0]==grid[i][2]){
+        if(grid[i][0]==2)return 10;
+        else if(grid[i][0]==1)return -10;
+      }
+    }
+    for(int j=0;j<3;j++){
+      if(grid[0][j]==grid[1][j] && grid[1][j]==grid[2][j]){
+        if(grid[0][j]==2)return 10;
+        else if(grid[0][j]==1)return -10;
+      }
+    }
+    if(grid[0][0]==grid[1][1] && grid[0][0]==grid[2][2]){
+      if(grid[0][0]==2)return 10;
+      else if(grid[0][0]==1)return -10;
+    }
+    if(grid[0][2]==grid[1][1] && grid[1][1]==grid[2][0]){
+      if(grid[1][1]==2)return 10;
+      else if(grid[1][1]==1)return -10;
+    }
+    return 0;
+  }
+
+  int minmax(bool isMax){
+    int score = evaluate();
+    if(score==10 || score==-10)return score;
+    if(isMovesLeft()==false)return 0;
+    if(isMax){
+      int mx=-1000;
+      for(int i=0;i<3;i++){
+        for(int j=0;j<3;j++){
+          if(grid[i][j]==0){
+            grid[i][j]=2;
+            mx=max(mx,minmax(!isMax));
+            grid[i][j]=0;
+          }
+        }
+      }
+      return mx;
+    }
+    else{
+      int mn=1000;
+      for(int i=0;i<3;i++){
+        for(int j=0;j<3;j++){
+          if(grid[i][j]==0){
+            grid[i][j]=1;
+            mn=min(mn,minmax(!isMax));
+            grid[i][j]=0;
+          }
+        }
+      }
+      return mn;
+    }
+  }
+
+  Future<List<int>> findBestMove() async{
+    int bestVal = -1000;
+    int r=-1,c=-1;
+    for(int i=0;i<3;i++){
+      for(int j=0;j<3;j++){
+        if(grid[i][j]==0){
+          grid[i][j]=2;
+          int val=minmax(false);
+          grid[i][j]=0;
+          if(val>bestVal){
+            bestVal=val;
+            r=i;
+            c=j;
+          }
+        }
+      }
+    }
+    return [r,c];
   }
 
 
@@ -112,8 +227,9 @@ class _PlayingScreenState extends State<PlayingScreen> {
                 child: Container(
                   // color: Colors.white24,
                   child: Center(
-                      child: gameWon?Text('Player ${currPlayer} WON',style: TextStyle(fontSize: 20,fontWeight: FontWeight.w600,color: Colors.red),)
-                          :Text('Player ${currPlayer} Turn',style: TextStyle(fontSize: 20,fontWeight: FontWeight.w600,color: Colors.orange),),
+                    child: gameDraw?Text('Game Draw!',style: TextStyle(fontSize: 20,fontWeight: FontWeight.w600,color: Colors.teal),)
+                        :gameWon?Text((currPlayer==1)?'You WON':'Mobile WON',style: TextStyle(fontSize: 20,fontWeight: FontWeight.w600,color: Colors.red),)
+                        :Text((currPlayer==1)?'Your Turn':'Mobile Turn',style: TextStyle(fontSize: 20,fontWeight: FontWeight.w600,color: Colors.orange),),
                   ),
                 ),
               ),
@@ -138,8 +254,8 @@ class _PlayingScreenState extends State<PlayingScreen> {
                                             borderRadius: BorderRadius.zero),
                                       ),
                                       foregroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.white),
+                                      MaterialStateProperty.all<Color>(
+                                          Colors.white),
                                     ),
                                     onPressed: () {
                                       onCellClicked(0,0);
@@ -162,8 +278,8 @@ class _PlayingScreenState extends State<PlayingScreen> {
                                             borderRadius: BorderRadius.zero),
                                       ),
                                       foregroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.white),
+                                      MaterialStateProperty.all<Color>(
+                                          Colors.white),
                                     ),
                                     onPressed: () {
                                       onCellClicked(0,1);
@@ -186,8 +302,8 @@ class _PlayingScreenState extends State<PlayingScreen> {
                                             borderRadius: BorderRadius.zero),
                                       ),
                                       foregroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.white),
+                                      MaterialStateProperty.all<Color>(
+                                          Colors.white),
                                     ),
                                     onPressed: () {
                                       onCellClicked(0,2);
@@ -220,8 +336,8 @@ class _PlayingScreenState extends State<PlayingScreen> {
                                             borderRadius: BorderRadius.zero),
                                       ),
                                       foregroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.white),
+                                      MaterialStateProperty.all<Color>(
+                                          Colors.white),
                                     ),
                                     onPressed: () {
                                       onCellClicked(1,0);
@@ -244,8 +360,8 @@ class _PlayingScreenState extends State<PlayingScreen> {
                                             borderRadius: BorderRadius.zero),
                                       ),
                                       foregroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.white),
+                                      MaterialStateProperty.all<Color>(
+                                          Colors.white),
                                     ),
                                     onPressed: () {
                                       onCellClicked(1,1);
@@ -268,8 +384,8 @@ class _PlayingScreenState extends State<PlayingScreen> {
                                             borderRadius: BorderRadius.zero),
                                       ),
                                       foregroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.white),
+                                      MaterialStateProperty.all<Color>(
+                                          Colors.white),
                                     ),
                                     onPressed: () {
                                       onCellClicked(1,2);
@@ -302,8 +418,8 @@ class _PlayingScreenState extends State<PlayingScreen> {
                                             borderRadius: BorderRadius.zero),
                                       ),
                                       foregroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.white),
+                                      MaterialStateProperty.all<Color>(
+                                          Colors.white),
                                     ),
                                     onPressed: () {
                                       onCellClicked(2,0);
@@ -326,8 +442,8 @@ class _PlayingScreenState extends State<PlayingScreen> {
                                             borderRadius: BorderRadius.zero),
                                       ),
                                       foregroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.white),
+                                      MaterialStateProperty.all<Color>(
+                                          Colors.white),
                                     ),
                                     onPressed: () {
                                       onCellClicked(2,1);
@@ -350,8 +466,8 @@ class _PlayingScreenState extends State<PlayingScreen> {
                                             borderRadius: BorderRadius.zero),
                                       ),
                                       foregroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.white),
+                                      MaterialStateProperty.all<Color>(
+                                          Colors.white),
                                     ),
                                     onPressed: () {
                                       onCellClicked(2,2);
@@ -377,7 +493,7 @@ class _PlayingScreenState extends State<PlayingScreen> {
                           resetGame();
                         },
                         child: Container(
-                          height: 50,
+                            height: 50,
                             width: 100,
                             color: Colors.grey.shade900,
                             child: Center(
